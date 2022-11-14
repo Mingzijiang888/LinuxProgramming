@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     ////提取带'-的选项参数，无论位置和个数
     for (i = 1; i < argc; i++)
     {
-        if (argv[i][0] == '-')
+        if ('-' == argv[i][0])
         {
             for (j = 1; j < strlen(argv[i]); j++)   // Attention: fun_strlen() counts including the '\0'
             {
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
                 num_opt++;
             }
         }
-		else if (strlen(id) == 0)
+		else if (0 == strlen(id))
 		{
 			strncpy(id, argv[i], MAX_PATHNAME - 1);      // source path
 			++num_except_opt;
@@ -78,12 +78,12 @@ int main(int argc, char* argv[])
     }
 
 	////参数错误
-	if (num_except_opt == 0)
+	if (0 == num_except_opt)
 	{
 		printf("cp: missing file operand\n");
 		exit(1);
 	}
-	else if (num_except_opt == 1)
+	else if (1 == num_except_opt)
 	{
 		printf("cp: missing destination file operand after \'%s\'\n", argv[num_except_opt]);
 		exit(1);
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
 
 	//开始复制
     do_copy(id, od);
-    if (r_special_flag == 1)
+    if (1 == r_special_flag)
     {
 
     }
@@ -111,7 +111,7 @@ static void joint_suffix(char* id, char* od, char* destpath)
     ////拼接后缀
     char* pSrc = NULL;
     pSrc = id + strlen(id) - 1;
-    while ((pSrc >= id) && (*pSrc) != '/')
+    while ((pSrc >= id) && '/' != (*pSrc))
     {
         pSrc--;
     }
@@ -128,7 +128,7 @@ static int check_od_validity(char* id, char* od)
 	lstat(id, &id_stat);
     strncpy(temp_destpath, od, MAX_PATHNAME - 1);
     pDest = temp_destpath + strlen(temp_destpath) - 1;
-    while ((pDest > temp_destpath) && (*pDest) != '/')
+    while ((pDest > temp_destpath) && '/' != (*pDest))
     {
         *pDest = '\0';
         pDest--;
@@ -136,11 +136,11 @@ static int check_od_validity(char* id, char* od)
     *pDest = '\0';
 
 	////排除长度为0的情况，类似cp 123 bb/123，而bb不存在的情况
-    if (strlen(temp_destpath) != 0 && access(temp_destpath, F_OK) != 0) 
+    if (0 != strlen(temp_destpath) && 0 != access(temp_destpath, F_OK)) 
     {
-        if (S_ISDIR(id_stat.st_mode) == 1) //若源路径是目录
+        if (1 == S_ISDIR(id_stat.st_mode)) //若源路径是目录
         {
-            if (r_flag != 1)
+            if (1 != r_flag)
             {
                 printf("cp: -r not specified; omitting directory \'%s\'\n", id);
                 exit(1);
@@ -168,11 +168,11 @@ static int check_od_special(char* id, char* od, char* destpath)
     char temp_odpath[MAX_PATHNAME] = {0,};
 
 	////目标路径不存在
-	if (access(od, F_OK) != 0)
+	if (0 != access(od, F_OK))
 	{
 		////先创建新文件夹
 		ret = mkdir(od, id_stat.st_mode);
-		if (ret == -1)
+		if (-1 == ret)
 		{
 			debug_print("[line:%d] mkdir failed \n", __LINE__);
 			exit(1);
@@ -208,14 +208,14 @@ static int check_od_special(char* id, char* od, char* destpath)
 		{
 			if_special = 1;
 			r_special_flag = 1;
-			if (access(destpath, F_OK) == 0)
+			if (0 == access(destpath, F_OK))
 			{
 				r_special_flag = 0;
 			}
 			else
 			{
 				ret = mkdir(destpath, id_stat.st_mode);
-				if (ret == -1)
+				if (-1 == ret)
 				{
 					debug_print("[line:%d] mkdir failed \n", __LINE__);
 					exit(1);
@@ -233,7 +233,7 @@ static int check_od_special(char* id, char* od, char* destpath)
 	printf("%s\n", destpath);
 #endif
 	////特殊情况，调用dir2dir
-	if (if_special == 1)
+	if (1 == if_special)
 	{
 		dir2dir(id, destpath);
 	}
@@ -248,7 +248,7 @@ void do_copy(char* id, char* od)
     struct stat od_stat;
     memset(&id_stat, 0, sizeof(struct stat));
     memset(&od_stat, 0, sizeof(struct stat));
-	if (id == NULL || od == NULL)
+	if (NULL == id || NULL == od)
 	{
 		debug_print("path error");
 		exit(1);
@@ -271,10 +271,10 @@ void do_copy(char* id, char* od)
 	}
 
 	////若源路径是目录
-	if (S_ISDIR(id_stat.st_mode) == 1)
+	if (1 == S_ISDIR(id_stat.st_mode))
 	{
 		////需加选项'-r'
-		if (r_flag != 1)
+		if (1 != r_flag)
 		{
 			printf("cp: -r not specified; omitting directory \'%s\'\n", id);
 			exit(1);
@@ -290,11 +290,11 @@ void do_copy(char* id, char* od)
         
 		////od不是特殊情况
 		////od不存在
-		if (access(od, F_OK) != 0)
+		if (0 != access(od, F_OK))
 		{	
 			////创建新文件夹，进行递归复制
 			ret = mkdir(od, id_stat.st_mode);
-			if (ret == -1)
+			if (-1 == ret)
 			{
 				debug_print("[line:%d] mkdir failed \n", __LINE__);
 				exit(1);
@@ -306,30 +306,32 @@ void do_copy(char* id, char* od)
 		{
 			////获取od相关信息
 			ret = lstat(od, &od_stat);
-			if (ret != 0)
+			if (0 != ret)
 			{
 				debug_print("get stat error");
 			}
 
 			////目标路径是文件，报错
-			if (S_ISDIR(od_stat.st_mode) == 0)
+			if (0 == S_ISDIR(od_stat.st_mode))
 			{
 				printf("cp: cannot overwrite non-directory \'%s\' with directory \'%s\'\n", od, id);
 				exit(1);
 			}
 			else	//目标路径是目录
-			{
-				////拼接后缀
-				joint_suffix(id, od, destpath);
-
 				////若拼接后的路径已存在
-				if (access(destpath, F_OK) == 0)
+				if (0 ==access(destpath, F_OK))
 				{
 					////但判断拼接后的路径与id指向同一inode，则报错
 					struct stat temp_dest_stat;
 					memset(&temp_dest_stat, 0, sizeof(struct stat));
 					ret = lstat(destpath, &temp_dest_stat);
-					if (ret != 0)
+					if (0 != ret)
+					{
+					////但判断拼接后的路径与id指向同一inode，则报错
+					struct stat temp_dest_stat;
+					memset(&temp_dest_stat, 0, sizeof(struct stat));
+					ret = lstat(destpath, &temp_dest_stat);
+					if (0 != ret)
 					{
 						debug_print("get stat error");
 					}
@@ -340,7 +342,7 @@ void do_copy(char* id, char* od)
 					}
 
 					////若拼接后是已存在的文件，也报错
-					if (S_ISDIR(temp_dest_stat.st_mode) == 0)
+					if (0 == S_ISDIR(temp_dest_stat.st_mode))
 					{
 						printf("cp: cannot overwrite non-directory \'%s\' with directory \'%s\'\n", destpath, id);
 						exit(1);
@@ -349,7 +351,7 @@ void do_copy(char* id, char* od)
 				else	////拼接后的路径不存在，先创建新文件夹
 				{
 					ret = mkdir(destpath, id_stat.st_mode);
-					if (ret != 0)
+					if (0 != ret)
 					{
 						debug_print("[line:%d] mkdir failed \n", __LINE__);
 						exit(1);
@@ -364,7 +366,7 @@ void do_copy(char* id, char* od)
 	else	////若源路径是文件
 	{
 		////目标路径不存在
-		if (access(od, F_OK) != 0)
+		if (0 != access(od, F_OK))
 		{
 			////路径合法，直接file->file
 			file2file(id, destpath);
@@ -372,13 +374,13 @@ void do_copy(char* id, char* od)
 		else	//目标路径存在
 		{
 			ret = lstat(od, &od_stat);
-			if (ret != 0)
+			if (0 != ret)
 			{
 				debug_print("get stat error");
 			}
 
 			////目标路径是文件
-			if (S_ISDIR(od_stat.st_mode) == 0)
+			if (0 == S_ISDIR(od_stat.st_mode))
 			{
 				////先检测源路径和目标路径是否指向同一文件inode，若是则报错
 				if (od_stat.st_ino == id_stat.st_ino)
@@ -392,12 +394,12 @@ void do_copy(char* id, char* od)
                 {
                     printf("cp: overwrite \'%s\'? ", od);
                     int temp = getchar();
-                    if (temp != 'y')
+                    if ('y' != temp)
                     {
-						while (getchar() != '\n');
+						while ('\n' != getchar());
 						exit(1);
                     }
-					while (getchar() != '\n');
+					while ('\n' != getchar());
                 }
 
 				file2file(id, destpath);
@@ -408,7 +410,7 @@ void do_copy(char* id, char* od)
 				joint_suffix(id, od, destpath);
 
 				////若拼接后的路径已存在，先判断是否指向同一inode，再判断'-i'覆盖标志；若无，进行复制
-				if (access(destpath, F_OK) == 0)
+				if (0 == access(destpath, F_OK))
 				{
 					////判断拼接后的路径是否与源路径指向同一inode，如cp 123 ../cp2/ -- 假设当前目录在cp2文件夹下
 					struct stat temp_dest_stat;
@@ -424,12 +426,12 @@ void do_copy(char* id, char* od)
 					{
 						printf("cp: overwrite \'%s\'? ", destpath);
 						int temp = getchar();
-						if (temp != 'y')
+						if ('y' != temp)
 						{
-							while (getchar() != '\n');
+							while ('\n' != getchar());
 							exit(1);
 						}
-						while (getchar() != '\n');
+						while ('\n' != getchar());
 					}
 				}
 
@@ -442,7 +444,7 @@ void do_copy(char* id, char* od)
 
 void file2file(char* source, char* dest)
 {
-	if (source == NULL || dest == NULL)
+	if (NULL == source || NULL == dest)
     {
 		debug_print("path error");
         exit(1);
@@ -460,14 +462,14 @@ void file2file(char* source, char* dest)
     int write_count = 0;
 
 	source_fd = open(source, O_RDONLY);
-	if (source_fd == -1)
+	if (-1 == source_fd)
 	{
 		debug_print("open file error");
 		exit(1);
 	}
 
 	dest_fd = open(dest, O_WRONLY | O_CREAT | O_TRUNC, source_stat.st_mode);
-	if (dest_fd == -1)
+	if (-1 == dest_fd)
 	{
 		debug_print("open file error");
 		exit(1);
@@ -476,10 +478,10 @@ void file2file(char* source, char* dest)
 	while(read_count > 0)
 	{
 		read_count = (read_count > datacount) ? datacount : read_count;
-		if((write_count = read(source_fd, buf, read_count)) == read_count)
+		if(read_count == (write_count = read(source_fd, buf, read_count)))
 		{
 			ret = write(dest_fd, buf, write_count);
-			if (ret == -1)
+			if (-1 == ret)
 			{
 				debug_print("write error");
 				exit(1);
@@ -495,13 +497,13 @@ void file2file(char* source, char* dest)
 	}
 	
 	ret = close(source_fd);
-    if (ret == -1)
+    if (-1 == ret)
     {
         debug_print("close failed");
         exit(1);
     }
     ret = close(dest_fd);
-    if (ret == -1)
+    if (-1 == ret)
     {
         debug_print("close failed");
         exit(1);
@@ -510,7 +512,7 @@ void file2file(char* source, char* dest)
 
 void dir2dir(char* source, char* dest)
 {
-    if (source == NULL || dest == NULL)
+    if (NULL == source || NULL == dest)
     {
         exit(1);
     }
@@ -524,28 +526,28 @@ void dir2dir(char* source, char* dest)
     char destpath[512] = {0,};
     
     currentdir = opendir(source);
-    if (currentdir == NULL)
+    if (NULL == currentdir)
     {
         debug_print("open dir error");
     }
 
 	////逐一读取文件夹下的项目
-    while ((currentdp = readdir(currentdir)) != NULL)
+    while (NULL != (currentdp = readdir(currentdir)))
     {
 		////忽略掉readdir中，名称为"."和".."的目录
-		if (strcmp(currentdp->d_name, ".") != 0 && strcmp(currentdp->d_name, "..") != 0)
+		if (0 != strcmp(currentdp->d_name, ".") && 0 != strcmp(currentdp->d_name, ".."))
         {
 			////拼接后缀
             snprintf(sourcepath, MAX_PATHNAME, "%s/%s", source, currentdp->d_name);
             ret = lstat(sourcepath, &currentstat);
-			if (ret == -1)
+			if (-1 == ret)
             {
                 debug_print("get stat error");
                 exit(1);
             }
 
 			////因为特殊情况的存在，被迫加的这一段
-			if (r_special_flag == 1)
+			if (1 == r_special_flag)
 			{
 				struct stat temp_deststat;
 				memset(&temp_deststat, 0, sizeof(struct stat));
@@ -563,15 +565,15 @@ void dir2dir(char* source, char* dest)
 			////若当前路径是目录，则递归（深度优先）
             if (S_ISDIR(currentstat.st_mode))   
             {
-                if (access(destpath, F_OK) == -1)	
+                if (-1 == access(destpath, F_OK))	
                 {
                     ret = mkdir(destpath, currentstat.st_mode);
-                    if (ret == -1)
+                    if (-1 == ret)
                     {
 						debug_print("mkdir error");
                         exit(1);
                     }
-					if (r_special_flag == 0)
+					if (0 == r_special_flag)
 					{
 						r_special_flag = 1;
 						strncpy(r_special_destbuf, destpath, MAX_PATHNAME);
@@ -582,18 +584,18 @@ void dir2dir(char* source, char* dest)
             else	////是文件，file->file
             {
 				////若文件已存在，-i询问
-                if (access(destpath, F_OK) == 0)
+                if (0 == access(destpath, F_OK))
                 {
 					if (i_flag)
 					{
 						printf("cp: overwrite \'%s\'? ", destpath);
 						int temp = getchar();
-						if (temp != 'y')
+						if ('y' != temp)
 						{
-							while (getchar() != '\n');
+							while ('\n' != getchar()); //除掉用户输入后的多余字符(包括换行符)
 							continue;
 						}
-						while (getchar() != '\n');
+						while ('\n' != getchar());
 					}
 				}
 				file2file(sourcepath, destpath);
@@ -602,7 +604,7 @@ void dir2dir(char* source, char* dest)
     }
 
     ret = closedir(currentdir);
-    if (ret == -1)
+    if (-1 == ret)
     {
 		debug_print("closedir error");
         exit(1);
