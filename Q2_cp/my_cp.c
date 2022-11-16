@@ -100,10 +100,6 @@ int main(int argc, char* argv[])
 
 	//开始复制
     do_copy(id, od);
-    if (1 == r_special_flag)
-    {
-
-    }
 }
 
 static void joint_suffix(char* id, char* od, char* destpath)
