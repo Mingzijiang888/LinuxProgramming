@@ -10,111 +10,92 @@
 #include <grp.h>
 #include <pwd.h>
 
-#define LONGEST_FILENAME 512
-#define LONGEST_FILENUM  200
+#define MAX_FILENAME 512
+#define MAX_FILENUM  200
 
-#define PERMISSION_NONE 0
-#define PERMISSION_a 1
-#define PERMISSION_l 2
-#define PERMISSION_h 4
-#define PERMISSION_R 8
+////全局标记符
+int flag_a = 0;    //-a, "show all"
+int flag_h = 0;    //-h, "human readable"
+int flag_l = 0;    //-l, "long list format"
+int flag_R = 0;    //-R, "recursive"
+int flag_R_first = 0; //-R有效时记录第一次递归
 
-void display(int flag, char* path);
+enum COLOR
+{
+    COLOR_BLUE = 34,
+    COLOR_GREEN = 32,
+    COLOR_WHITE = 37,
+};
+
+void display(char* path);
 int color(char* path);
 void sort(char **a, int num);
 void ShowDir(char *dirname);
 void ShowADir(char *dirname);
 void ShowFile(char *filename, char* dpname);
 
-enum COLOR
-{
-    COLOR_BLUE = 34, COLOR_GREEN = 32, COLOR_WHITE = 37
-};
-
-// Global Flag
-int per_a = 0;      // -a, "show all" needed
-int per_h = 0;      // -h, "show human size" needed
-int per_r = 0;      // -r, "show recursive" needed
-// judge if the first recursion
-int flag_R = 0;
 
 int main(int argc, char* argv[])
 {
-    char path[LONGEST_FILENAME] = {0,};
-    char argument[32] = {0,};
-    int flag = PERMISSION_NONE;     // decide the mode according to the argument
-    int k = 0;      // index of argument
-    int num = 0;    // index of "option"
+    int i = 0, j = 0;   //用于循环
+    int num_opt = 0;            ////带'-'选项的个数
+    char option[32] = {0,};    //提取带'-'的选项
+    int num_except_opt = 0;     ////除带'-'的选项外的参数个数
+    char path[MAX_FILENAME] = {0,}; //ls的路径
 
-    int i = 0, j = 0;      // used for "for" cycle
-
-    // figure out the num of '-'
+    ////提取带'-的选项参数，无论位置和个数
     for (i = 1; i < argc; i++)
     {
-        if (argv[i][0] == '-')
+        if ('-' == argv[i][0])
         {
             for (j = 1; j < strlen(argv[i]); j++)   // Attention: fun_strlen() counts including the '\0'
             {
-                argument[k] = argv[i][j];
-                k++;
+                option[num_opt] = argv[i][j];
+                num_opt++;
             }
-            num++;
+        }
+        else if (0 == strlen(path)) //id为空时才赋值，即将第一个出现的非'-'字符串当作id
+        {
+            strncpy(path, argv[i], MAX_FILENAME - 1);      // source path
+            ++num_except_opt;
         }
     }
 
-    for (i = 0; i < k; i++)
+    ////判断需要的选项
+    for (i = 0; i < num_opt; i++)
     {
-        switch (argument[i])
+        switch (option[i])
         {
             case 'a':
-                flag |= PERMISSION_a;
-                per_a = 1;
+                flag_a = 1;
                 break;
             case 'l':
-                flag |= PERMISSION_l;
+                flag_l = 1;
                 break;
             case 'h':
-                flag |= PERMISSION_h;
-                per_h = 1;
+                flag_h = 1;
                 break;
             case 'R':
-                flag |= PERMISSION_R;
-                per_r = 1;
+                flag_R = 1;
                 break;
             default:
-                printf("error: invalid option -%c\n", argument[i]);
+                printf("ls: invalid option -- %c\n", option[i]);
                 return -1;
         }
     }
 
-    if (argc == num + 1)
+    if (0 == num_except_opt)
     {
         strncpy(path, ".", sizeof(path));
         path[1] = '\0';
-        display(flag, path);
-    }
-    else
-    {
-        for (i = 1; i < argc; i++)
-        {
-            if (argv[i][0] == '-')
-            {
-                continue;
-            }
-            else
-            {
-                strncpy(path, argv[i], sizeof(path));
-                path[strlen(argv[i])] = '\0';
-                display(flag, path);
-            }
-        }
     }
 
+    display(path);
     putchar('\n');
     return 0;
 }
 
-void display(int flag, char* path)
+void display(char* path)
 {
     if (path == NULL)
     {
@@ -130,7 +111,7 @@ void display(int flag, char* path)
         return;
     }
  
-    if (flag & PERMISSION_l)
+    if (1 == flag_l)
     {
         if (S_ISDIR(st.st_mode))    // charge if it is a directory
         {
@@ -188,7 +169,7 @@ void sort(char **a, int num)
     }
 
     int i = 0, j = 0;
-    char temp[LONGEST_FILENAME + 1] = {0,};
+    char temp[MAX_FILENAME + 1] = {0,};
     for (i = 0; i < num; i++)
     {
         for (j = i + 1; j < num; j++)
@@ -198,9 +179,9 @@ void sort(char **a, int num)
                 // strcpy(temp, a[i]);
                 // strcpy(a[i], a[j]);
                 // strcpy(a[j], temp);
-                strncpy(temp, a[i], LONGEST_FILENAME);
-                strncpy(a[i], a[j], LONGEST_FILENAME);
-                strncpy(a[j], temp, LONGEST_FILENAME);
+                strncpy(temp, a[i], MAX_FILENAME);
+                strncpy(a[i], a[j], MAX_FILENAME);
+                strncpy(a[j], temp, MAX_FILENAME);
             }
         }
     }
@@ -216,9 +197,9 @@ char bytes2human(long* x)
 
     char symbols[] = {'\0','K', 'M', 'G', 'T'};
     int i = 0;
-    while (*x >= LONGEST_FILENAME)
+    while (*x >= MAX_FILENAME)
     {
-        *x = (long)(((float)(*x) / LONGEST_FILENAME) + 0.5);
+        *x = (long)(((float)(*x) / MAX_FILENAME) + 0.5);
         i++;
     }
     return  symbols[i];
@@ -234,16 +215,16 @@ void ShowDir(char *dirname)
         return;
     }
 
-    char pathname[LONGEST_FILENAME] = {0,};
+    char pathname[MAX_FILENAME] = {0,};
     DIR* dir = NULL;
     struct dirent* dp = NULL;
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
-    char* name[LONGEST_FILENUM] = {0,};       // 200 row, support most 200 files
+    char* name[MAX_FILENUM] = {0,};       // 200 row, support most 200 files
     int NumOfDirectory = 0;        // num of dir under current directory
 
-    char** sort_name = (char**)malloc(sizeof(char*) * LONGEST_FILENUM);     // 200 row, support most 200 files
-    memset(sort_name, 0, sizeof(char*) * LONGEST_FILENUM);
+    char** sort_name = (char**)malloc(sizeof(char*) * MAX_FILENUM);     // 200 row, support most 200 files
+    memset(sort_name, 0, sizeof(char*) * MAX_FILENUM);
 
     int n = 0;      // num of files, including the dir
     int i = 0;
@@ -254,9 +235,9 @@ void ShowDir(char *dirname)
         return;
     }
 
-    if (per_r)
+    if (flag_R)
     {
-        if(flag_R)
+        if(flag_R_first)
         {
             printf("\n\n");
             printf("\033[37m%s:\n", dirname);
@@ -267,7 +248,7 @@ void ShowDir(char *dirname)
         }
     }
     
-    if (per_a)
+    if (flag_a)
     {
         printf("\033[%dm.    ", color("."));
         printf("\033[%dm..    ", color(".."));
@@ -280,7 +261,7 @@ void ShowDir(char *dirname)
             continue;
         }
         // override the hidden file when without -a
-        if ((per_a == 0) && (dp->d_name[0] == '.'))
+        if ((flag_a == 0) && (dp->d_name[0] == '.'))
         {
             continue;
         }
@@ -294,23 +275,23 @@ void ShowDir(char *dirname)
         }
         if (S_ISDIR(st.st_mode))        // records the num of dir under current path
         {
-            name[NumOfDirectory] = (char*)malloc(sizeof(char) * LONGEST_FILENAME);
-            memset(name[NumOfDirectory], 0, sizeof(char) * LONGEST_FILENAME);
-            strncpy(name[NumOfDirectory], pathname, LONGEST_FILENAME);
+            name[NumOfDirectory] = (char*)malloc(sizeof(char) * MAX_FILENAME);
+            memset(name[NumOfDirectory], 0, sizeof(char) * MAX_FILENAME);
+            strncpy(name[NumOfDirectory], pathname, MAX_FILENAME);
             NumOfDirectory++;
-            if (NumOfDirectory >= LONGEST_FILENUM)
+            if (NumOfDirectory >= MAX_FILENUM)
             {
                 perror("too much file in this path");
                 return;
             }
         }
 
-        sort_name[n] = (char*)malloc(sizeof(char) * LONGEST_FILENAME);       // 512 array
-        memset(sort_name[n], 0, sizeof(char) * LONGEST_FILENAME);
-        snprintf(sort_name[n], LONGEST_FILENAME, "%s", dp->d_name);
+        sort_name[n] = (char*)malloc(sizeof(char) * MAX_FILENAME);       // 512 array
+        memset(sort_name[n], 0, sizeof(char) * MAX_FILENAME);
+        snprintf(sort_name[n], MAX_FILENAME, "%s", dp->d_name);
 
         n++;
-        if (n >= LONGEST_FILENUM)
+        if (n >= MAX_FILENUM)
         {
             perror("too much file in this path");
             return;
@@ -331,23 +312,23 @@ void ShowDir(char *dirname)
         return;
     }
 
-    for (i = 0; i < LONGEST_FILENUM; i ++)
+    for (i = 0; i < MAX_FILENUM; i ++)
     {
         free(sort_name[i]);
         sort_name[i] = NULL;
     }
     free(sort_name);
 
-    if(per_r)
+    if(flag_R)
     {
-        flag_R = 1;
+        flag_R_first = 1;
         for(i = 0; i < NumOfDirectory; i++)
         {
             ShowDir(name[i]);
         }
     }
 
-    for (i = 0; i < LONGEST_FILENUM; i ++)
+    for (i = 0; i < MAX_FILENUM; i ++)
     {
         free(name[i]);
         name[i] = NULL;
@@ -363,16 +344,16 @@ void ShowADir(char *dirname)
         return;
     }
 
-    char pathname[LONGEST_FILENAME] = {0,};
+    char pathname[MAX_FILENAME] = {0,};
     DIR* dir = NULL;
     struct dirent* dp = NULL;
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
-    char* name[LONGEST_FILENUM] = {0,};
+    char* name[MAX_FILENUM] = {0,};
     int NumOfDirectory = 0;
 
-    char** sort_name = (char**)malloc(sizeof(char*) * LONGEST_FILENUM);
-    memset(sort_name, 0, sizeof(char*) * LONGEST_FILENUM);
+    char** sort_name = (char**)malloc(sizeof(char*) * MAX_FILENUM);
+    memset(sort_name, 0, sizeof(char*) * MAX_FILENUM);
     int n = 0;      // index of sort_name
 
     int i = 0;
@@ -383,9 +364,9 @@ void ShowADir(char *dirname)
         return;
     }
 
-    if (per_r)
+    if (flag_R)
     {
-        if(flag_R)
+        if(flag_R_first)
         {
             printf("\n");
             printf("%s:\n", dirname);
@@ -396,7 +377,7 @@ void ShowADir(char *dirname)
         }
     }
 
-    if (per_a)
+    if (flag_a)
     {
         ShowFile(".", ".");
         ShowFile("..", "..");
@@ -408,7 +389,7 @@ void ShowADir(char *dirname)
         {
             continue;
         }
-        if ((per_a == 0) && (dp->d_name[0] == '.'))
+        if ((flag_a == 0) && (dp->d_name[0] == '.'))
         {
             continue;
         }
@@ -421,23 +402,23 @@ void ShowADir(char *dirname)
         }
         if (S_ISDIR(st.st_mode))
         {
-            name[NumOfDirectory] = (char*)malloc(sizeof(char) * LONGEST_FILENAME);
-            memset(name[NumOfDirectory], 0, sizeof(char) * LONGEST_FILENAME);
-            strncpy(name[NumOfDirectory], pathname, LONGEST_FILENAME);
+            name[NumOfDirectory] = (char*)malloc(sizeof(char) * MAX_FILENAME);
+            memset(name[NumOfDirectory], 0, sizeof(char) * MAX_FILENAME);
+            strncpy(name[NumOfDirectory], pathname, MAX_FILENAME);
             NumOfDirectory++;
-            if (NumOfDirectory >= LONGEST_FILENUM)
+            if (NumOfDirectory >= MAX_FILENUM)
             {
                 perror("too much file in this path");
                 return;
             }
         }
 
-        sort_name[n] = (char*)malloc(sizeof(char) * LONGEST_FILENAME);
-        memset(sort_name[n], 0, sizeof(char) * LONGEST_FILENAME);
-        snprintf(sort_name[n], LONGEST_FILENAME, "%s", dp->d_name);
+        sort_name[n] = (char*)malloc(sizeof(char) * MAX_FILENAME);
+        memset(sort_name[n], 0, sizeof(char) * MAX_FILENAME);
+        snprintf(sort_name[n], MAX_FILENAME, "%s", dp->d_name);
         
         n++;
-        if (n >= LONGEST_FILENUM)
+        if (n >= MAX_FILENUM)
         {
             perror("too much file in this path");
             return;
@@ -458,23 +439,23 @@ void ShowADir(char *dirname)
         return;
     }
 
-    for (i = 0; i < LONGEST_FILENUM; i ++)
+    for (i = 0; i < MAX_FILENUM; i ++)
     {
         free(sort_name[i]);
         sort_name[i] = NULL;
     }
     free(sort_name);
 
-    if(per_r)
+    if(flag_R)
     {
-        flag_R = 1;
+        flag_R_first = 1;
         for(i = 0; i < NumOfDirectory; i++)
         {
             ShowADir(name[i]);
         }
     }
 
-    for (i = 0; i < LONGEST_FILENUM; i ++)
+    for (i = 0; i < MAX_FILENUM; i ++)
     {
         free(name[i]);
         name[i] = NULL;
@@ -559,7 +540,7 @@ void ShowFile(char *filename, char* dpname)
     printf("%-8s ", psd->pw_name);
     printf("%-8s ", grp->gr_name);
 
-    if (per_h)
+    if (flag_h)
     {
         long temp = (long)st.st_size;
         char ch = bytes2human(&temp);

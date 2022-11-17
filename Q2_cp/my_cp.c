@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     int i = 0, j = 0;			////用于循环
 	int num_opt = 0;			////带'-'选项的个数
 	char option[32] = {0,};		////提取带'-'的选项
-	int num_except_opt = 0;		////出带'-'的选项外的参数个数
+	int num_except_opt = 0;		////除带'-'的选项外的参数个数
     char id[MAX_PATHNAME] = {0,};		////源路径	
     char od[MAX_PATHNAME] = {0,};		////目标路径
 
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
                 num_opt++;
             }
         }
-		else if (0 == strlen(id))
+		else if (0 == strlen(id)) //id为空时才赋值，即将第一个出现的非'-'字符串当作id
 		{
 			strncpy(id, argv[i], MAX_PATHNAME - 1);      // source path
 			++num_except_opt;
