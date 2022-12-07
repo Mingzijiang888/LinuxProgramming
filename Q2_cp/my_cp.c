@@ -12,7 +12,10 @@
 
 ////若需要程序打印调试日志，打开为'1'
 #if 1
-#define debug_print(format, ...) printf("\033[0;31m[%s:%d]%s\033[m\n", __FUNCTION__, __LINE__, format)
+#define debug_print(format, ...) do{ \
+    printf("\033[0;31m[%s:%d]"format"\033[m\n", \
+        __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+}while(0)
 #else
 #define debug_print(format, ...) 
 #endif
@@ -30,19 +33,19 @@ void dir2dir(char* source, char* dest);
 
 int main(int argc, char* argv[])
 {
-    int i = 0, j = 0;			////用于循环
-	int num_opt = 0;			////带'-'选项的个数
-	char option[32] = {0,};		////提取带'-'的选项
-	int num_except_opt = 0;		////除带'-'的选项外的参数个数
-    char id[MAX_PATHNAME] = {0,};		////源路径	
-    char od[MAX_PATHNAME] = {0,};		////目标路径
+    int i = 0, j = 0;			//用于循环
+	int num_opt = 0;			//带'-'选项的个数
+	char option[32] = {0,};		//提取带'-'的选项
+	int num_except_opt = 0;		//除带'-'的选项外的参数个数
+    char id[MAX_PATHNAME] = {0,};	//源路径	
+    char od[MAX_PATHNAME] = {0,};	//目标路径
 
     ////提取带'-的选项参数，无论位置和个数
     for (i = 1; i < argc; i++)
     {
         if ('-' == argv[i][0])
         {
-            for (j = 1; j < strlen(argv[i]); j++)   // Attention: fun_strlen() counts including the '\0'
+            for (j = 1; j < strlen(argv[i]); j++)
             {
                 option[num_opt] = argv[i][j];
                 num_opt++;
@@ -50,7 +53,7 @@ int main(int argc, char* argv[])
         }
 		else if (0 == strlen(id)) //id为空时才赋值，即将第一个出现的非'-'字符串当作id
 		{
-			strncpy(id, argv[i], MAX_PATHNAME - 1);      // source path
+			strncpy(id, argv[i], MAX_PATHNAME - 1);      //source path
 			++num_except_opt;
 		}
 		else if (num_except_opt < 2)

@@ -10,6 +10,16 @@
 #include <grp.h>
 #include <pwd.h>
 
+////若需要程序打印调试日志，打开为'1'
+#if 1
+#define debug_print(format, ...) do{ \
+    printf("\033[0;31m[%s:%d]"format"\033[m\n", \
+        __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+}while(0)
+#else
+#define debug_print(format, ...) 
+#endif
+
 #define MAX_FILENAME 512
 #define MAX_FILENUM  200
 
@@ -18,29 +28,30 @@ int flag_a = 0;    //-a, "show all"
 int flag_h = 0;    //-h, "human readable"
 int flag_l = 0;    //-l, "long list format"
 int flag_R = 0;    //-R, "recursive"
-int flag_R_first = 0; //-R有效时记录第一次递归
+int flag_R_first = 1; //-R有效时记录第一次递归
 
-enum COLOR
+////标记不同类型文件的颜色
+enum get_color
 {
-    COLOR_BLUE = 34,
-    COLOR_GREEN = 32,
-    COLOR_WHITE = 37,
+    get_color_BLUE = 34,
+    get_color_GREEN = 32,
+    get_color_WHITE = 37,
 };
 
-void display(char* path);
-int color(char* path);
+void do_ls(char* path);
+static int get_color(char* path);
 void sort(char **a, int num);
-void ShowDir(char *dirname);
+static void ShowDir(char *dirname);
 void ShowADir(char *dirname);
 void ShowFile(char *filename, char* dpname);
 
 
 int main(int argc, char* argv[])
 {
-    int i = 0, j = 0;   //用于循环
-    int num_opt = 0;            ////带'-'选项的个数
+    int i = 0, j = 0;          //用于循环
+    int num_opt = 0;           //带'-'选项的个数
     char option[32] = {0,};    //提取带'-'的选项
-    int num_except_opt = 0;     ////除带'-'的选项外的参数个数
+    int num_except_opt = 0;    //除带'-'的选项外的参数个数
     char path[MAX_FILENAME] = {0,}; //ls的路径
 
     ////提取带'-的选项参数，无论位置和个数
@@ -48,15 +59,15 @@ int main(int argc, char* argv[])
     {
         if ('-' == argv[i][0])
         {
-            for (j = 1; j < strlen(argv[i]); j++)   // Attention: fun_strlen() counts including the '\0'
+            for (j = 1; j < strlen(argv[i]); j++)
             {
                 option[num_opt] = argv[i][j];
                 num_opt++;
             }
         }
-        else if (0 == strlen(path)) //id为空时才赋值，即将第一个出现的非'-'字符串当作id
+        else if (0 == strlen(path)) //id为空时才赋值，即将第一个出现的非'-'字符串当作path
         {
-            strncpy(path, argv[i], MAX_FILENAME - 1);      // source path
+            strncpy(path, argv[i], MAX_FILENAME - 1);
             ++num_except_opt;
         }
     }
@@ -84,36 +95,46 @@ int main(int argc, char* argv[])
         }
     }
 
+    ////path为空时，默认ls路径为'.'
     if (0 == num_except_opt)
     {
         strncpy(path, ".", sizeof(path));
         path[1] = '\0';
     }
 
-    display(path);
+	////将path字符串可能存在的最后一个'/'去掉，防止后续拼接后缀时，出现两个'/'连一起的路径名
+	char* ppath = NULL;
+	ppath = od + strlen(path) - 1;
+	if ('/' == (*ppath))
+	{
+		*ppath = '\0';		
+	}
+	ppath = NULL;
+
+    do_ls(path);
     putchar('\n');
     return 0;
 }
 
-void display(char* path)
+void do_ls(char* path)
 {
-    if (path == NULL)
+    if (NULL == path)
     {
-        printf("[line:%d] error path \n", __LINE__);
+        debug_print("path error");
         return;
     }
 
-    struct stat st;
-    memset(&st, 0, sizeof(struct stat));
-    if (stat(path, &st) < 0)
+    struct stat st_path;
+    memset(&st_path, 0, sizeof(struct stat));
+    if (stat(path, &st_path) < 0)
     {
-        perror("stat");
+		printf("ls: cannot access \'%s\': No such file or directory", path);
         return;
     }
  
     if (1 == flag_l)
     {
-        if (S_ISDIR(st.st_mode))    // charge if it is a directory
+        if (1 == S_ISDIR(st_path.st_mode))  //path是目录
         {
             ShowADir(path);
         }
@@ -124,43 +145,42 @@ void display(char* path)
     }
     else
     {
-        ShowDir(path);
+		if (0 == S_ISDIR(st_path.st_mode))  //path是文件
+		{
+			printf("%s", path);
+		}
+		else
+		{
+			ShowDir(path);
+		}
     }
 }
 
-
-// fail: -1;  
-int color(char* path)
+static int get_color(char* path)
 {
-    if (path == NULL)
-    {
-        printf("[line:%d] error path \n", __LINE__);
-        return -1;
-    }
-
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
     if (stat(path, &st) < 0)
     {
-        perror("stat");
+        debug_print("path error");
         return -1;
     }
     
     if (S_ISDIR(st.st_mode))
     {
-        return COLOR_BLUE;      //blue
+        return get_color_BLUE;
     }
-    else if(S_ISREG(st.st_mode) && (st.st_mode & S_IXUSR))  /* Execute by owner.  */
+    else if(S_ISREG(st.st_mode) && (st.st_mode & S_IXUSR))  //Regular file && Execute by owner
     {
-        return COLOR_GREEN;      //green
+        return get_color_GREEN;
     }
     else
     {
-        return COLOR_WHITE;      //white
+        return get_color_WHITE;
     }
 }
 
-void sort(char **a, int num)
+void sort(char** a, int num)
 {
     if (a == NULL)
     {
@@ -176,9 +196,6 @@ void sort(char **a, int num)
         {
             if (strcmp(a[i], a[j]) > 0)
             {
-                // strcpy(temp, a[i]);
-                // strcpy(a[i], a[j]);
-                // strcpy(a[j], temp);
                 strncpy(temp, a[i], MAX_FILENAME);
                 strncpy(a[i], a[j], MAX_FILENAME);
                 strncpy(a[j], temp, MAX_FILENAME);
@@ -206,109 +223,108 @@ char bytes2human(long* x)
 }
 
 // Show the file/director with '-l' (Recursive)
-void ShowDir(char *dirname)
+static void ShowDir(char* dirname)
 {
-    int ret = 0;
-    if (dirname == NULL)
-    {
-        printf("[line:%d] error dirname \n", __LINE__);
-        return;
-    }
-
-    char pathname[MAX_FILENAME] = {0,};
+	int i = 0;		//用于循环
+	int ret = 0;
     DIR* dir = NULL;
     struct dirent* dp = NULL;
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
-    char* name[MAX_FILENUM] = {0,};       // 200 row, support most 200 files
-    int NumOfDirectory = 0;        // num of dir under current directory
+    int nFiles = 0;      //num of files, includes the dir
+    int nDirs = 0;       //num of directories
 
-    char** sort_name = (char**)malloc(sizeof(char*) * MAX_FILENUM);     // 200 row, support most 200 files
+	char pathname[MAX_FILENAME] = {0,};  //用于存储暂时的路径名称
+	char* name[MAX_FILENUM] = {0,};      //支持最多200个文件（声明200个char*类型变量）
+    char** sort_name = (char**)malloc(sizeof(char*) * MAX_FILENUM);
     memset(sort_name, 0, sizeof(char*) * MAX_FILENUM);
 
-    int n = 0;      // num of files, including the dir
-    int i = 0;
-
-    if ((dir = opendir(dirname)) == NULL)
+    if (NULL == (dir = opendir(dirname)))
     {
-        perror("opendir:");
+        debug_print("opendir:");
         return;
     }
 
     if (flag_R)
     {
-        if(flag_R_first)
+        if(flag_R_first)  //递归显示，第一次不用空行
         {
-            printf("\n\n");
             printf("\033[37m%s:\n", dirname);
+			flag_R_first = 0;
         }
         else
         {
+			printf("\n\n");
             printf("\033[37m%s:\n", dirname);
         }
     }
     
     if (flag_a)
     {
-        printf("\033[%dm.    ", color("."));
-        printf("\033[%dm..    ", color(".."));
+        printf("\033[%dm.  ", get_color("."));
+        printf("\033[%dm..  ", get_color(".."));
     }
 
-    while ((dp = readdir(dir)) != NULL)   // the pointer will move on after once execute ? yes
+	////逐一读取文件夹下的项目
+    while (NULL != (dp = readdir(dir)))
     {
+		////跳过名称为'.'或'..'的目录
         if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
         {
             continue;
         }
-        // override the hidden file when without -a
+        ////无-a选项时，跳过以'.'打头的文件
         if ((flag_a == 0) && (dp->d_name[0] == '.'))
         {
             continue;
         }
 
+		////拼接后缀
         snprintf(pathname, sizeof(pathname), "%s/%s", dirname, dp->d_name);
-
         if (stat(pathname, &st) < 0)
         {
-            perror("stat");
+            debug_print("stat error");
             return;
         }
-        if (S_ISDIR(st.st_mode))        // records the num of dir under current path
+
+		////统计当前路径下的目录个数
+        if (S_ISDIR(st.st_mode))
         {
-            name[NumOfDirectory] = (char*)malloc(sizeof(char) * MAX_FILENAME);
-            memset(name[NumOfDirectory], 0, sizeof(char) * MAX_FILENAME);
-            strncpy(name[NumOfDirectory], pathname, MAX_FILENAME);
-            NumOfDirectory++;
-            if (NumOfDirectory >= MAX_FILENUM)
+            name[nDirs] = (char*)malloc(sizeof(char) * MAX_FILENAME);
+            memset(name[nDirs], 0, sizeof(char) * MAX_FILENAME);
+            strncpy(name[nDirs], pathname, MAX_FILENAME);
+
+            nDirs++;
+            if (nDirs >= MAX_FILENUM)
             {
-                perror("too much file in this path");
+                printf("ls: too much file in this path");
                 return;
             }
         }
 
-        sort_name[n] = (char*)malloc(sizeof(char) * MAX_FILENAME);       // 512 array
-        memset(sort_name[n], 0, sizeof(char) * MAX_FILENAME);
-        snprintf(sort_name[n], MAX_FILENAME, "%s", dp->d_name);
+        sort_name[nFiles] = (char*)malloc(sizeof(char) * MAX_FILENAME);
+        memset(sort_name[nFiles], 0, sizeof(char) * MAX_FILENAME);
+        snprintf(sort_name[nFiles], MAX_FILENAME, "%s", dp->d_name);
 
-        n++;
-        if (n >= MAX_FILENUM)
+        nFiles++;
+        if (nFiles >= MAX_FILENUM)
         {
-            perror("too much file in this path");
+            printf("ls: too much file in this path");
             return;
         }
     }
 
-    sort(sort_name, n);
-    for (i = 0; i < n; i++)
+    sort(sort_name, nFiles);
+    for (i = 0; i < nFiles; i++)
     {
         snprintf(pathname, sizeof(pathname), "%s/%s", dirname, sort_name[i]);
-        printf("\033[%dm%s   ", color(pathname), sort_name[i]);
+        printf("\033[%dm%s   ", get_color(pathname), sort_name[i]);
     }
 
     closedir(dir);
     if (ret != 0)
     {
-        printf("[Line:%d] cannot close the dir", __LINE__);
+        debug_print("closedir error");
         return;
     }
 
@@ -321,8 +337,7 @@ void ShowDir(char *dirname)
 
     if(flag_R)
     {
-        flag_R_first = 1;
-        for(i = 0; i < NumOfDirectory; i++)
+        for(i = 0; i < nDirs; i++)
         {
             ShowDir(name[i]);
         }
@@ -350,11 +365,11 @@ void ShowADir(char *dirname)
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
     char* name[MAX_FILENUM] = {0,};
-    int NumOfDirectory = 0;
+    int nDirs = 0;
 
     char** sort_name = (char**)malloc(sizeof(char*) * MAX_FILENUM);
     memset(sort_name, 0, sizeof(char*) * MAX_FILENUM);
-    int n = 0;      // index of sort_name
+    int nFiles = 0;      // index of sort_name
 
     int i = 0;
 
@@ -368,12 +383,12 @@ void ShowADir(char *dirname)
     {
         if(flag_R_first)
         {
-            printf("\n");
-            printf("%s:\n", dirname);
+            printf("\nFiles");
+            printf("%s:\nFiles", dirname);
         }
         else
         {
-            printf("%s:\n", dirname);
+            printf("%s:\nFiles", dirname);
         }
     }
 
@@ -402,31 +417,31 @@ void ShowADir(char *dirname)
         }
         if (S_ISDIR(st.st_mode))
         {
-            name[NumOfDirectory] = (char*)malloc(sizeof(char) * MAX_FILENAME);
-            memset(name[NumOfDirectory], 0, sizeof(char) * MAX_FILENAME);
-            strncpy(name[NumOfDirectory], pathname, MAX_FILENAME);
-            NumOfDirectory++;
-            if (NumOfDirectory >= MAX_FILENUM)
+            name[nDirs] = (char*)malloc(sizeof(char) * MAX_FILENAME);
+            memset(name[nDirs], 0, sizeof(char) * MAX_FILENAME);
+            strncpy(name[nDirs], pathname, MAX_FILENAME);
+            nDirs++;
+            if (nDirs >= MAX_FILENUM)
             {
                 perror("too much file in this path");
                 return;
             }
         }
 
-        sort_name[n] = (char*)malloc(sizeof(char) * MAX_FILENAME);
-        memset(sort_name[n], 0, sizeof(char) * MAX_FILENAME);
-        snprintf(sort_name[n], MAX_FILENAME, "%s", dp->d_name);
+        sort_name[nFiles] = (char*)malloc(sizeof(char) * MAX_FILENAME);
+        memset(sort_name[nFiles], 0, sizeof(char) * MAX_FILENAME);
+        snprintf(sort_name[nFiles], MAX_FILENAME, "%s", dp->d_name);
         
-        n++;
-        if (n >= MAX_FILENUM)
+        nFiles++;
+        if (nFiles >= MAX_FILENUM)
         {
             perror("too much file in this path");
             return;
         }
     }
 
-    sort(sort_name, n);
-    for (i = 0; i < n; i++)
+    sort(sort_name, nFiles);
+    for (i = 0; i < nFiles; i++)
     {
         snprintf(pathname, sizeof(pathname), "%s/%s", dirname, sort_name[i]);
         ShowFile(pathname, sort_name[i]);
@@ -449,7 +464,7 @@ void ShowADir(char *dirname)
     if(flag_R)
     {
         flag_R_first = 1;
-        for(i = 0; i < NumOfDirectory; i++)
+        for(i = 0; i < nDirs; i++)
         {
             ShowADir(name[i]);
         }
@@ -492,27 +507,27 @@ void ShowFile(char *filename, char* dpname)
         return;
     }
 
-    switch (st.st_mode & S_IFMT)    /* These bits determine file type. */
+    switch (st.st_mode & __S_IFMT)    /* These bits determine file type. */
     {
-    case S_IFBLK: 
+    case __S_IFBLK: 
         printf("b");
         break;
-    case S_IFCHR: 
+    case __S_IFCHR: 
         printf("c");
         break;
-    case S_IFDIR: 
+    case __S_IFDIR: 
         printf("d");
         break;
-    case S_IFIFO: 
+    case __S_IFIFO: 
         printf("f");
         break;
-    case S_IFLNK: 
+    case __S_IFLNK: 
         printf("l");
         break;
-    case S_IFREG: 
+    case __S_IFREG: 
         printf("-");
         break;
-    case S_IFSOCK: 
+    case __S_IFSOCK: 
         printf("s");
         break;
     default:
@@ -560,6 +575,6 @@ void ShowFile(char *filename, char* dpname)
     buffer1_time[12] = '\0';
     printf(" %s ", buffer1_time);
 
-    printf("\033[%dm%s\n", color(filename), dpname);
+    printf("\033[%dm%s\n", get_color(filename), dpname);
 }
 
